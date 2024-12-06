@@ -85,6 +85,7 @@ def enhancedFeatureExtractorDigit(datum):
 
     #visited list
     visited = []
+    dirs = [(0, 1), (1, 0), (0, -1), (-1, 0)] 
     for i in range(DIGIT_DATUM_HEIGHT):
         visited.append([False] * DIGIT_DATUM_WIDTH)
 
@@ -96,7 +97,6 @@ def enhancedFeatureExtractorDigit(datum):
                 whiteRegions += 1
                 visited[y][x] = True
                 queue = [(x, y)] 
-                dirs = [(0, 1), (1, 0), (0, -1), (-1, 0)] 
 
                 while queue:
                     currx, curry = queue.pop(0)  
@@ -350,31 +350,7 @@ def analysis(classifier, guesses, testLabels, testData, rawTestData, printImage)
     #         print "Image: "
     #         print rawTestData[i]
     #         break
-    errors = []
-
-    #CHATTED
-    #DO WE NEED SMTH HERE TO SHOW WE DID WORK?
-    #uncommenting this makes q4 error
-
-    # Identify misclassified examples
-    # for i in range(len(guesses)):
-    #     if guesses[i] != testLabels[i]:
-    #         errors.append((i, testLabels[i], guesses[i]))
-
-    # # Print summary
-    # print("Total test examples:", len(testLabels))
-    # print("Total errors:", len(errors))
-    # print("Accuracy:", 100 - (len(errors) / len(testLabels) * 100), "%")
-
-    # # Show details of first few errors
-    # print("\nExamples of misclassifications:")
-    # for i, truth, prediction in errors[:5]:  # Show up to 5 errors
-    #     print("===================================")
-    #     print(f"Example {i}:")
-    #     print(f"True label: {truth}, Predicted: {prediction}")
-    #     print("Image:")
-    #     printImage(rawTestData[i].getPixels())
-
+    
 
 ## =====================
 ## You don't have to modify any code below.
