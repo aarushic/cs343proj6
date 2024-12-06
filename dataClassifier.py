@@ -71,83 +71,62 @@ def enhancedFeatureExtractorDigit(datum):
     You should return a util.Counter() of features
     for this datum (datum is of type samples.Datum).
 
-    ## DESCRIBE YOUR ENHANCED FEATURES HERE...
-    
+    #CHATTED !!
 
+    ## DESCRIBE YOUR ENHANCED FEATURES HERE...
+    1. `one_white_region`: Binary feature indicating whether exactly one white (connected) region exists.
+    2. `two_white_regions`: Binary feature indicating whether exactly two white (connected) regions exist.
+    3. `three_or_more_white_regions`: Binary feature indicating whether three or more white (connected) regions exist.
     ##
     """
     features =  basicFeatureExtractorDigit(datum)
-
     "*** YOUR CODE HERE ***"
-    #CHATTED!!
+    #STILL POTENTIALLY UNCHAT
 
-    
+    #visited list
+    visited = []
+    for i in range(DIGIT_DATUM_HEIGHT):
+        visited.append([False] * DIGIT_DATUM_WIDTH)
 
+    whiteRegions = 0
+    #graph bfs to explore graph
+    for y in range(DIGIT_DATUM_HEIGHT):
+        for x in range(DIGIT_DATUM_WIDTH):
+            if datum.getPixel(x, y) == 0 and not visited[y][x]:
+                whiteRegions += 1
+                visited[y][x] = True
+                queue = [(x, y)] 
+                dirs = [(0, 1), (1, 0), (0, -1), (-1, 0)] 
 
-    # breaks = 0
-    # pixels = datum.getPixels()
-    # i = 0
-    # nonzero = 0
-    # firstLeft = None
-    # aboveCenter = 0
-    # while i < len(pixels):
-    #     row = pixels[i]
-    #     active = False
-    #     j = 1
-    #     while j < len(row):
-    #         if row[j] != 0:
-    #             nonzero += 1
-    #             if not firstLeft or j < firstLeft:
-    #                 firstLeft = j
-    #             if j <= (len(pixels) + 1) / 2:
-    #                 aboveCenter += 1
-    #         if row[j] != row[j - 1]:
-    #             breaks += 1
-    #         j += 1
-    #     i += 1
-            
-    # width = len(pixels[0]) - (firstLeft * 2)
-    # j = 0
-    # firstTop = None
-    # pastRight = 0
-    # while j < len(pixels[0]):
-    #     active = False
-    #     col = [p[j] for p in pixels]
-    #     i = 1        
-    #     while i < len(col):
-    #         if col[j] != 0:
-    #             nonzero += 1
-    #             if not firstTop or i < firstTop:
-    #                 firstTop = i           
-    #             if i <= (len(pixels[0]) + 1) / 2:
-    #                 pastRight += 1
-    #         if col[i] != row[i - 1]:
-    #             breaks += 1
-    #         i += 1
-    #     j += 1
-        
-    # height = len(pixels) - (firstTop * 2)
-    # aspectRatio = float(width) / height
-    # for n in range(5):
-    #     features[n] = breaks > 175 and 1.0 or 0.0
-        
-    # for n in range(10):
-    #     features[(n + 1) * 10] = aspectRatio < 0.69
-        
-    # for n in range(5):
-    #     features[-n] = nonzero > 300 and 1.0 or 0.0
-        
-    # percentAbove = float(aboveCenter) / nonzero
-    # for n in range(5):
-    #     features[-(n + 1) * 10] = percentAbove > 0.35 and 1.0 or 0.0
-        
-    # percentRight = float(pastRight) / nonzero
-    # for n in range(1000, 1005):
-    #     features[n] = percentRight < 0.27 and 1.0 or 0.0
-    # return features
+                while queue:
+                    currx, curry = queue.pop(0)  
+                    for dx, dy in dirs:
+                        newx = currx + dx
+                        newy = curry + dy
+                        #bounds
+                        if 0 <= newx < DIGIT_DATUM_WIDTH and 0 <= newy < DIGIT_DATUM_HEIGHT and not visited[newy][newx] and datum.getPixel(newx, newy) == 0:
+                            visited[newy][newx] = True
+                            queue.append((newx, newy))
 
+    #encode num of white regions as binary features
+    if whiteRegions == 1:
+        features['one_white_region'] = 1  
+    else:
+        features['one_white_region'] = 0
 
+    if whiteRegions == 2:
+        features['two_white_regions'] = 1  
+    else:
+        features['two_white_regions'] = 0
 
+    if whiteRegions >= 3:
+        features['three+_white_regions'] = 1  
+    else:
+        features['three+_white_regions'] = 0
+
+    return features
+
+   
 
 def basicFeatureExtractorPacman(state):
     """
@@ -187,15 +166,15 @@ def enhancedPacmanFeatures(state, action):
     For each state, this function is called with each legal action.
     It should return a counter with { <feature name> : <feature value>, ... }
     """
-    features = util.Counter()
-    from util import Counter
+    from util import Counter, manhattanDistance
     from game import Directions
-    from util import manhattanDistance
+
+    features = Counter()
 
     "*** YOUR CODE HERE ***"
     #UNCHAT!!!
     
-   # Get successor state after taking the action
+    #Get successor state after taking the action
     successor = state.generatePacmanSuccessor(action)
     pacman_pos = successor.getPacmanPosition()
     food = successor.getFood()
@@ -206,49 +185,113 @@ def enhancedPacmanFeatures(state, action):
     scared_times = [ghost.scaredTimer for ghost in ghost_states]
 
     # Food Features
-    food_distances = [manhattanDistance(pacman_pos, food_pos) for food_pos in food_list]
-    features["closest-food"] = 1.0 / min(food_distances) if food_distances else 0.0
-    features["weighted-food-distance"] = sum(1.0 / dist for dist in food_distances if dist > 0)
+    food_distances = []
+    for pos in food_list:
+        food_distances.append(manhattanDistance(pacman_pos, pos))
+    features["closest-food"] = 0
+    if food_distances:
+        features["closest-food"] = 1.0 / min(food_distances)
+    
+    features["weighted-food-distance"] = 0
+    for dist in food_distances:
+        if dist > 0:
+            features["weighted-food-distance"] += 1.0 / dist
 
     # Capsule Features
-    capsule_distances = [manhattanDistance(pacman_pos, capsule) for capsule in capsules]
-    features["closest-capsule"] = 1.0 / min(capsule_distances) if capsule_distances else 0.0
-    features["eat-capsule"] = 1.0 if pacman_pos in capsules else 0.0
+    capsule_distances = []
+
+    # Calculate distances to all capsules
+    for capsule in capsules:
+        distance = manhattanDistance(pacman_pos, capsule)
+        capsule_distances.append(distance)
+
+    # Compute the closest capsule feature
+    if len(capsule_distances) > 0:  # Ensure the list is not empty
+        closest_capsule_distance = min(capsule_distances)
+        features["closest-capsule"] = 1.0 / closest_capsule_distance
+    else:
+        features["closest-capsule"] = 0.0
+
+    if pacman_pos in capsules:
+        features["eat-capsule"] = 1.0
+    else:
+        features["eat-capsule"] = 0.0
 
     # Ghost Features
-    # Ghost Features
-    ghost_distances = [manhattanDistance(pacman_pos, ghost_pos) for ghost_pos in ghost_positions]
-    scared_ghost_distances = [dist for dist, scared_time in zip(ghost_distances, scared_times) if scared_time > 0]
-    active_ghost_distances = [dist for dist, scared_time in zip(ghost_distances, scared_times) if scared_time == 0]
+    # Calculate distances to all ghosts
+    ghost_distances = []
+    for ghost_pos in ghost_positions:
+        distance = manhattanDistance(pacman_pos, ghost_pos)
+        ghost_distances.append(distance)
 
-    features["closest-active-ghost"] = 1.0 / min(active_ghost_distances) if active_ghost_distances and min(active_ghost_distances) > 0 else 0.0
-    features["closest-scared-ghost"] = 1.0 / min(scared_ghost_distances) if scared_ghost_distances and min(scared_ghost_distances) > 0 else 0.0
+    # Separate scared and active ghost distances
+    scared_ghost_distances = []
+    active_ghost_distances = []
+    for dist, scared_time in zip(ghost_distances, scared_times):
+        if scared_time > 0:
+            scared_ghost_distances.append(dist)
+        elif scared_time == 0:
+            active_ghost_distances.append(dist)
 
+    # Compute the closest active ghost feature
+    if active_ghost_distances and min(active_ghost_distances) > 0:
+        closest_active_ghost_distance = min(active_ghost_distances)
+        features["closest-active-ghost"] = 1.0 / closest_active_ghost_distance
+    else:
+        features["closest-active-ghost"] = 0.0
+
+    # Compute the closest scared ghost feature
+    if scared_ghost_distances and min(scared_ghost_distances) > 0:
+        closest_scared_ghost_distance = min(scared_ghost_distances)
+        features["closest-scared-ghost"] = 1.0 / closest_scared_ghost_distance
+    else:
+        features["closest-scared-ghost"] = 0.0
+
+    # Compute ghost avoidance feature
     if active_ghost_distances:
-        features["ghost-avoidance"] = sum(-1.0 / dist for dist in active_ghost_distances if dist > 0 and dist <= 3)
+        ghost_avoidance = 0.0
+        for dist in active_ghost_distances:
+            if dist > 0 and dist <= 3:
+                ghost_avoidance += -1.0 / dist
+        features["ghost-avoidance"] = ghost_avoidance
     else:
         features["ghost-avoidance"] = 0.0
-
+   
     # Score Improvement
-    features["score-delta"] = successor.getScore() - state.getScore()
-    features["normalized-score-delta"] = (successor.getScore() - state.getScore()) / (1 + len(food_list))
+    # Calculate score delta
+    score_delta = successor.getScore() - state.getScore()
+    features["score-delta"] = score_delta
 
-    # Stopping Feature
-    features["stop-action"] = 1.0 if action == Directions.STOP and not active_ghost_distances else 0.0
+    # Calculate normalized score delta
+    if len(food_list) > 0:
+        normalized_score_delta = score_delta / (1 + len(food_list))
+    else:
+        normalized_score_delta = 0.0
+    features["normalized-score-delta"] = normalized_score_delta
 
-    # Direction Consistency
-    features["direction-consistency"] = 1.0 if action == state.getPacmanState().getDirection() else 0.0
+    # Calculate stop-action feature
+    if action == Directions.STOP and not active_ghost_distances:
+        features["stop-action"] = 1.0
+    else:
+        features["stop-action"] = 0.0
+
+    # Calculate direction-consistency feature
+    if action == state.getPacmanState().getDirection():
+        features["direction-consistency"] = 1.0
+    else:
+        features["direction-consistency"] = 0.0
 
     # Weight Normalization
     weight_factors = {
         "closest-food": 1.5,
         "closest-capsule": 1.2,
-        "closest-active-ghost": -2.0,
+        "closest-active-ghost": -20.0,
         "closest-scared-ghost": 1.8,
         "ghost-avoidance": -1.0,
         "stop-action": -0.5,
         "score-delta": 2.0,
     }
+    
     for key in features:
         features[key] *= weight_factors.get(key, 1.0)
 
