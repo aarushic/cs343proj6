@@ -174,115 +174,111 @@ def enhancedPacmanFeatures(state, action):
     "*** YOUR CODE HERE ***"
     #UNCHAT!!!
     
-    #Get successor state after taking the action
+    #post action state
     successor = state.generatePacmanSuccessor(action)
-    pacman_pos = successor.getPacmanPosition()
+    pacman = successor.getPacmanPosition()
     food = successor.getFood()
-    food_list = food.asList()
+    foodList = food.asList()
     capsules = successor.getCapsules()
-    ghost_states = successor.getGhostStates()
-    ghost_positions = [ghost.getPosition() for ghost in ghost_states]
-    scared_times = [ghost.scaredTimer for ghost in ghost_states]
+    ghostState= successor.getGhostStates()
+    ghostPos = [ghost.getPosition() for ghost in ghostState]
+    scaredTime = [ghost.scaredTimer for ghost in ghostState]
 
-    # Food Features
-    food_distances = []
-    for pos in food_list:
-        food_distances.append(manhattanDistance(pacman_pos, pos))
-    features["closest-food"] = 0
-    if food_distances:
-        features["closest-food"] = 1.0 / min(food_distances)
+    #adding features about food (close food, weighted distance)
+    foodDist = []
+    for food in foodList:
+        foodDist.append(manhattanDistance(pacman, food))
+    features["closest-food"] = 0 #why is this var name dashe
+    if len(foodDist) > 0:
+        features["closest-food"] = 1.0/min(foodDist)
     
     features["weighted-food-distance"] = 0
-    for dist in food_distances:
+    for dist in foodDist:
         if dist > 0:
-            features["weighted-food-distance"] += 1.0 / dist
+            features["weighted-food-distance"] += 1.0/dist
 
-    # Capsule Features
-    capsule_distances = []
+    #features for capsules
+    capsuleDist = []
 
-    # Calculate distances to all capsules
+
     for capsule in capsules:
-        distance = manhattanDistance(pacman_pos, capsule)
-        capsule_distances.append(distance)
+        dist = manhattanDistance(pacman, capsule)
+        capsuleDist.append(dist)
 
-    # Compute the closest capsule feature
-    if len(capsule_distances) > 0:  # Ensure the list is not empty
-        closest_capsule_distance = min(capsule_distances)
-        features["closest-capsule"] = 1.0 / closest_capsule_distance
-    else:
-        features["closest-capsule"] = 0.0
+    features["closest-capsule"] = 0
+    if len(capsuleDist) > 0: 
+        features["closest-capsule"] = 1.0/min(capsuleDist)
 
-    if pacman_pos in capsules:
+    if pacman in capsules:
         features["eat-capsule"] = 1.0
     else:
         features["eat-capsule"] = 0.0
 
-    # Ghost Features
-    # Calculate distances to all ghosts
-    ghost_distances = []
-    for ghost_pos in ghost_positions:
-        distance = manhattanDistance(pacman_pos, ghost_pos)
-        ghost_distances.append(distance)
+    #features for ghost, need to find both the closest active or scared ghost
+    ghostDist = []
+    for ghost in ghostPos:
+        dist = manhattanDistance(pacman , ghost)
+        ghostDist.append(dist)
 
-    # Separate scared and active ghost distances
-    scared_ghost_distances = []
-    active_ghost_distances = []
-    for dist, scared_time in zip(ghost_distances, scared_times):
-        if scared_time > 0:
-            scared_ghost_distances.append(dist)
-        elif scared_time == 0:
-            active_ghost_distances.append(dist)
+    scared = []
+    active = []
+    for dist, time in zip(ghostDist, scaredTime):
+        if time> 0:
+            scared.append(dist)
+        else: #could be elif time == 0 if it doesn't work
+            active.append(dist)
 
-    # Compute the closest active ghost feature
-    if active_ghost_distances and min(active_ghost_distances) > 0:
-        closest_active_ghost_distance = min(active_ghost_distances)
-        features["closest-active-ghost"] = 1.0 / closest_active_ghost_distance
-    else:
-        features["closest-active-ghost"] = 0.0
-
-    # Compute the closest scared ghost feature
-    if scared_ghost_distances and min(scared_ghost_distances) > 0:
-        closest_scared_ghost_distance = min(scared_ghost_distances)
-        features["closest-scared-ghost"] = 1.0 / closest_scared_ghost_distance
+    #close scared
+    if scared and min(scared) > 0:
+        closest = min(scared)
+        features["closest-scared-ghost"] = 1.0 / closest
     else:
         features["closest-scared-ghost"] = 0.0
 
-    # Compute ghost avoidance feature
-    if active_ghost_distances:
-        ghost_avoidance = 0.0
-        for dist in active_ghost_distances:
+    
+    #close active
+    if active and min(active) > 0:
+        closest = min(active)
+        features["closest-active-ghost"] = 1.0 / closest
+    else:
+        features["closest-active-ghost"] = 0.0
+
+
+    #want to avoid active ghosts #####potentially unchat more
+    if active:
+        avoidScore = 0.0
+        for dist in active:
             if dist > 0 and dist <= 3:
-                ghost_avoidance += -1.0 / dist
-        features["ghost-avoidance"] = ghost_avoidance
+                avoidScore += -1.0 / dist
+        features["ghost-avoidance"] = avoidScore
     else:
         features["ghost-avoidance"] = 0.0
    
-    # Score Improvement
-    # Calculate score delta
-    score_delta = successor.getScore() - state.getScore()
-    features["score-delta"] = score_delta
+    
+    
+    #finding the change in score
+    scoreChange = successor.getScore() - state.getScore()
+    features["score-delta"] = scoreChange
 
-    # Calculate normalized score delta
-    if len(food_list) > 0:
-        normalized_score_delta = score_delta / (1 + len(food_list))
-    else:
-        normalized_score_delta = 0.0
-    features["normalized-score-delta"] = normalized_score_delta
+    normalize = 0.0
+    if len(foodList) > 0:
+        normalize = scoreChange / (1 + len(foodList))
+    features["normalized-score-delta"] = normalize
 
-    # Calculate stop-action feature
-    if action == Directions.STOP and not active_ghost_distances:
+    #stopping
+    if action == Directions.STOP and not active:
         features["stop-action"] = 1.0
     else:
         features["stop-action"] = 0.0
 
-    # Calculate direction-consistency feature
+    #same directoin
     if action == state.getPacmanState().getDirection():
         features["direction-consistency"] = 1.0
     else:
         features["direction-consistency"] = 0.0
 
-    # Weight Normalization
-    weight_factors = {
+    #weights added to each feature
+    weights = {
         "closest-food": 1.5,
         "closest-capsule": 1.2,
         "closest-active-ghost": -20.0,
@@ -293,11 +289,10 @@ def enhancedPacmanFeatures(state, action):
     }
     
     for key in features:
-        features[key] *= weight_factors.get(key, 1.0)
+        features[key] = features[key]* weights.get(key, 1.0)
 
-    # Normalize Features
+    #normalize
     features.divideAll(10.0)
-
     return features
 
 
